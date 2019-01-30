@@ -82,6 +82,7 @@ def get_data(iden_list):
         #Reading attributes
         attributes=[]
         attributes=iden_list[1].split(',')
+        #print(attributes)
 
         ###TODO: from table1,table2 - done as just printing but actually join
 
@@ -98,8 +99,106 @@ def get_data(iden_list):
                         print(i+'\t',end='')
                     print('\n')
                     
-        ##TODO:Aggregate Functions
-        # elif("max")       
+        ##Aggregate Functions- max,min,sum,avg
+        elif(("max" in attributes[0]) or ("min" in attributes[0]) or ("avg" in attributes[0]) or ("sum" in attributes[0])):
+            #Only one table
+            if(len(tables) > 1):
+                msg="Error: Invalid Syntax - Aggregate Functions can be applied on only one table"
+                error_msg(msg)
+            if (len(tables)==1):
+                table = tables[0].strip()
+            #Only on 1 column
+            temp_col=attributes[0].split('(')[1]
+            if(temp_col[-1] != ')'):
+                msg="Error: Invalid Syntax"
+                error_msg(msg)    
+            col=temp_col[0:-1]
+
+            if col not in metadata[table]:
+                msg="Error: attribute doesn't exist"
+                error_msg(msg)  
+            else:
+                col_no=metadata[table].index(col)
+
+            if("max" in attributes[0]):
+                # print("max(",table,".",col,")")
+                print("max(%s.%s)" %(table,col))
+                file_name=FILES_PATH+table.strip()+".csv"
+                file_data=read_csv_file(file_name)
+                max=-sys.maxsize
+                for row in file_data:
+                    if(max < int(row[col_no])):
+                        max=int(row[col_no])
+                print(max,"\n")
+
+            elif("min" in attributes[0]):
+                print("min(%s.%s)" %(table,col))
+                file_name=FILES_PATH+table.strip()+".csv"
+                file_data=read_csv_file(file_name)
+                min=sys.maxsize
+                for row in file_data:
+                    if(min > int(row[col_no])):
+                        min=int(row[col_no])
+                print(min,"\n")
+
+            elif("sum" in attributes[0]):
+                print("sum(%s.%s)" %(table,col))
+                file_name=FILES_PATH+table.strip()+".csv"
+                file_data=read_csv_file(file_name)
+                sum=0
+                for row in file_data:
+                    sum+=int(row[col_no])
+                print(sum,"\n")
+
+            elif("avg" in attributes[0]):
+                print("avg(%s.%s)" %(table,col))
+                file_name=FILES_PATH+table.strip()+".csv"
+                file_data=read_csv_file(file_name)
+                sum=0
+                count=0
+                avg=0
+                for row in file_data:
+                    sum+=int(row[col_no])
+                    count+=1
+                if(count != 0):
+                    avg=sum/count
+                print(avg,"\n")
+
+        ##Distinct
+        elif( attributes[0].strip() == "distinct" ):
+            #Only one table
+            if(len(tables) > 1):
+                msg="Error: Invalid Syntax - distinct can be applied on only one table"
+                error_msg(msg)
+            if (len(tables)==1):
+                table = tables[0].strip()
+
+            attrs=iden_list[2].split(',')
+            print(attrs)
+            column_nos = []
+            for i in attrs:
+                print("distinct(%s)\t"%i,end='')
+                if i in metadata[table]:
+                    column_nos.append(metadata[table].index(i))
+                else:
+                    msg="Error: attribute doesn't exist"
+                    error_msg(msg)
+            print("\n")
+            file_name=FILES_PATH+table.strip()+".csv"
+            file_data=read_csv_file(file_name)
+            distinct_values=[]
+            for row in file_data:
+                row_values=[]
+                for i in column_nos:
+                    row_values.append(row[i])
+                if( row_values not in distinct_values):
+                    distinct_values.append(row_values)
+            # print(distinct_values)
+            for row in distinct_values:
+                for i in list(row):
+                    print(i+'\t\t',end='')
+                print('\n')
+
         else:
             if (len(tables)==1):
                 table = tables[0]
