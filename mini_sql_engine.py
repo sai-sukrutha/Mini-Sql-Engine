@@ -76,6 +76,8 @@ def get_data(iden_list):
         tables_index=from_index+1
         tables=[]
         file_data=[]
+        if( tables_index >= len(iden_list)):
+            error_msg("Error:Invalid Syntax")
         tables=iden_list[tables_index].split(',')
         # print(tables)
 
@@ -85,9 +87,13 @@ def get_data(iden_list):
         #print(attributes)
 
         ###TODO: from table1,table2 - done as just printing but actually join
+        ##where clause
+        if("where" in iden_list[-1] or "WHERE" in iden_list[-1]):
+            conds,and_flag,or_flag=process_where(iden_list[-1])
+
 
         if(attributes[0] == '*'):
-            for i in range(0,len(tables)):
+            if(len(tables) == 1):
                 for col in metadata[tables[i]]:
                     print(col+'\t',end='')
                 print('\n')
@@ -98,6 +104,41 @@ def get_data(iden_list):
                     for i in row:
                         print(i+'\t',end='')
                     print('\n')
+
+            else:
+                ##Join
+                if(len(tables) != 2):
+                    error_msg("Join is done for 2 tables only")
+                table1=tables[0]
+                table2=tables[1]
+                file_name1=FILES_PATH+table1.strip()+".csv"
+                file_data1=read_csv_file(file_name1)
+                file_name2=FILES_PATH+table2.strip()+".csv"
+                file_data2=read_csv_file(file_name2)
+
+                column_names=[]
+                for col in metadata[table1]:
+                    col_name="table1"+"."+col
+                    column_names.append(col_name)
+                for col in metadata[table2]:
+                    col_name="table2"+"."+col
+                    column_names.append(col_name)
+
+                for col in column_names:
+                    print(col+'  ',end='')
+                print('\n')
+                
+                file_data=[]
+                for row1 in file_data1:
+                    for row2 in file_data2:
+                        file_data.append(row1+row2)
+                        
+                for row in file_data:
+                    for i in row:
+                        print(i+'\t',end='')
+                    print('\n')
+
+
                     
         ##Aggregate Functions- max,min,sum,avg
         elif(("max" in attributes[0]) or ("min" in attributes[0]) or ("avg" in attributes[0]) or ("sum" in attributes[0])):
@@ -218,28 +259,100 @@ def get_data(iden_list):
                         print(row[i]+'\t',end='')
                     print('\n')
             else:
-                for j in range(0,len(tables)):
-                    table = tables[j]
-                    column_nos = []
-                    for i in attributes:
-                        print(i+'\t',end='')
-                        if i in metadata[table]:
-                            column_nos.append(metadata[table].index(i))
-                        else:
-                            msg="Error: attribute doesn't exist"
-                            error_msg(msg)
+                ##Join
+                if(len(tables) > 2):
+                    error_msg("Join is done for 2 tables only")
+
+                table1=tables[0]
+                table2=tables[1]
+                file_name1=FILES_PATH+table1.strip()+".csv"
+                file_data1=read_csv_file(file_name1)
+                file_name2=FILES_PATH+table2.strip()+".csv"
+                file_data2=read_csv_file(file_name2)
+
+                column_names=[]
+                for col in metadata[table1]:
+                    col_name="table1"+"."+col
+                    column_names.append(col_name)
+                for col in metadata[table2]:
+                    col_name="table2"+"."+col
+                    column_names.append(col_name)
+
+                len_table1=len(metadata[table1])
+
+                #Which cols to print
+                col_nos=[]
+                for a_i in range(0,len(attributes)):
+                    found=0
+                    if ( "." in attributes[a_i]):
+                        table,col=attributes[a_i].split('.')
+                        col_no=metadata[table].index(col)
+                    else:
+                        for i in range(0,len(tables)):
+                            if(attributes[a_i] in metadata[tables[i]]):
+                                table=tables[i]
+                                col=attributes[a_i]
+                                col_no=metadata[table].index(col)
+                                if(found == 1):
+                                    msg=("Error:Ambiguous attribute %s"%attributes[a_i])
+                                    error_msg(msg)
+                                found=1
+                    if(table == table1):
+                        col_nos.append(col_no)
+                    elif(table == table2):
+                        col_nos.append(len_table1+col_no)
+
+                for col in col_nos:
+                    print(column_names[col]+'  ',end='')
+                print('\n')
+                
+                file_data=[]
+                for row1 in file_data1:
+                    for row2 in file_data2:
+                        file_data.append(row1+row2)
+                        
+                for row in file_data:
+                    for i in col_nos:
+                        print(row[i]+'\t',end='')
                     print('\n')
-                    file_name=FILES_PATH+tables[j].strip()+".csv"
-                    file_data=read_csv_file(file_name)
-
-                    for row in file_data:
-                        for i in column_nos:
-                            print(row[i]+'\t',end='')
-                        print('\n')
-
+                
     else:
         msg="Invalid Syntax"
         error_msg(msg)
+
+def process_where(where_cond):
+
+    cond_list=where_cond.split(" ")
+    print(cond_list)
+    #Maximum one operator (2 conditions)
+    conds=[]
+    and_flag=0
+    or_flag=0
+
+    for ele in cond_list:
+        if( ele == "where" or ele == "WHERE" or ele == ';'):
+            continue
+        elif( ele == 'and' or ele == 'AND'):
+            and_flag=1
+        elif( ele == 'or' or ele == 'OR'):
+            or_flag=1
+        elif( ele == 'not' or ele == 'NOT'):
+            msg="Error:not is not allowed"
+            error_msg(msg)
+        else:
+            conds.append(ele)
+
+    if( and_flag and or_flag):
+        msg="Error:one and/or operator is allowed"
+        error_msg(msg)
+
+    print(conds)
+    return conds,and_flag,or_flag
+
+
+    #conditions
+
+    #TODO:joins
 
 
 def read_csv_file(file_path):
